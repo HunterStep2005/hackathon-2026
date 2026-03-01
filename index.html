@@ -2138,6 +2138,134 @@
       t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 2500);
     }
+    function getDischargesLast12h(facilityId) {
+      if (!DATA || !DATA.chartData || !DATA.chartData[facilityId] || !DATA.chartData[facilityId]['Discharges']) return 0;
+      const series = DATA.chartData[facilityId]['Discharges'];
+      if (series.length < 2) return 0;
+
+      const latestTime = new Date(series[series.length - 1].t).getTime();
+      const cutoffTime = latestTime - (12 * 60 * 60 * 1000);
+
+      let discharges = 0;
+      for (let i = 1; i < series.length; i++) {
+        const t = new Date(series[i].t).getTime();
+        if (t > cutoffTime) {
+          const diff = series[i].v - series[i - 1].v;
+          if (diff >= 0) {
+            discharges += diff;
+          } else {
+            discharges += series[i].v;
+          }
+        }
+      }
+      return discharges;
+    }
+    function getPeakActivityHours7d(facilityId) {
+      if (!DATA || !DATA.chartData || !DATA.chartData[facilityId]) return 'N/A';
+      const cData = DATA.chartData[facilityId];
+
+      const admissions = cData['Admissions'] || [];
+      const discharges = cData['Discharges'] || [];
+      const births = cData['Births'] || [];
+      const icu = cData['ICU Occupancy'] || [];
+      const census = cData['Total Census'] || [];
+
+      const allSeries = [admissions, discharges, births, icu, census];
+      let latestTime = 0;
+      allSeries.forEach(s => {
+        if (s.length > 0) {
+          latestTime = Math.max(latestTime, new Date(s[s.length - 1].t).getTime());
+        }
+      });
+      if (latestTime === 0) return 'N/A';
+
+      const cutoffTime = latestTime - (7 * 24 * 60 * 60 * 1000);
+
+      const sumAdm = new Array(24).fill(0);
+      const sumDis = new Array(24).fill(0);
+      const sumBir = new Array(24).fill(0);
+
+      const sumIcu = new Array(24).fill(0);
+      const countIcu = new Array(24).fill(0);
+      const sumCen = new Array(24).fill(0);
+      const countCen = new Array(24).fill(0);
+
+      const processCumulative = (series, outArray) => {
+        for (let i = 1; i < series.length; i++) {
+          const t = new Date(series[i].t).getTime();
+          if (t > cutoffTime) {
+            const diff = series[i].v - series[i - 1].v;
+            const activity = diff >= 0 ? diff : series[i].v;
+            const hour = new Date(series[i].t).getHours();
+            outArray[hour] += activity;
+          }
+        }
+      };
+
+      const processAverage = (series, sumArray, countArray) => {
+        for (let i = 0; i < series.length; i++) {
+          const t = new Date(series[i].t).getTime();
+          if (t > cutoffTime) {
+            const hour = new Date(series[i].t).getHours();
+            sumArray[hour] += series[i].v;
+            countArray[hour]++;
+          }
+        }
+      };
+
+      processCumulative(admissions, sumAdm);
+      processCumulative(discharges, sumDis);
+      processCumulative(births, sumBir);
+      processAverage(icu, sumIcu, countIcu);
+      processAverage(census, sumCen, countCen);
+
+      const meanIcu = new Array(24).fill(0);
+      const meanCen = new Array(24).fill(0);
+      for (let i = 0; i < 24; i++) {
+        meanIcu[i] = countIcu[i] > 0 ? sumIcu[i] / countIcu[i] : 0;
+        meanCen[i] = countCen[i] > 0 ? sumCen[i] / countCen[i] : 0;
+      }
+
+      const normalize = (arr) => {
+        // Find valid values for determining min and max
+        const min = Math.min(...arr);
+        const max = Math.max(...arr);
+        if (max === min) return new Array(24).fill(0);
+        return arr.map(v => (v - min) / (max - min));
+      };
+
+      const normAdm = normalize(sumAdm);
+      const normDis = normalize(sumDis);
+      const normBir = normalize(sumBir);
+      const normIcu = normalize(meanIcu);
+      const normCen = normalize(meanCen);
+
+      const scores = new Array(24).fill(0);
+      for (let i = 0; i < 24; i++) {
+        scores[i] = (normAdm[i] * 0.20) + (normDis[i] * 0.10) + (normBir[i] * 0.20) + (normIcu[i] * 0.30) + (normCen[i] * 0.20);
+      }
+
+      // Find rolling 2-hour window with highest score
+      let maxScore2h = -1;
+      let peakStart = 0;
+      for (let i = 0; i < 24; i++) {
+        const nextH = (i + 1) % 24;
+        const score2h = scores[i] + scores[nextH];
+        if (score2h > maxScore2h) {
+          maxScore2h = score2h;
+          peakStart = i;
+        }
+      }
+
+      const formatHour = (h) => {
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const hr12 = h % 12 || 12;
+        return `${hr12} ${ampm}`;
+      };
+
+      const peakEnd = (peakStart + 2) % 24;
+      return `${formatHour(peakStart)} - ${formatHour(peakEnd)}`;
+    }
     function computeOccPct(fac) {
       if (fac.occupancyPct !== undefined) return fac.occupancyPct;
       return fac.beds > 0 ? ((fac.latestCensus / fac.beds) * 100) : 0;
@@ -2431,6 +2559,16 @@
         <div class="detail-kpi-label">Patient Acuity</div>
         <div class="detail-kpi-value">${formatPct(f.latestCensus > 0 ? (f.latestICU / f.latestCensus) * 100 : 0)}</div>
         <div class="detail-kpi-sub">ICU / Total Occupants</div>
+      </div>
+      <div class="detail-kpi">
+        <div class="detail-kpi-label">Bed Turnover Rate</div>
+        <div class="detail-kpi-value">${formatPct(f.beds > 0 ? (getDischargesLast12h(id) / f.beds) * 100 : 0)}</div>
+        <div class="detail-kpi-sub">Discharges (last 12h) / Total Beds</div>
+      </div>
+      <div class="detail-kpi">
+        <div class="detail-kpi-label">Peak Activity</div>
+        <div class="detail-kpi-value" style="font-size: 1.25rem;">${getPeakActivityHours7d(id)}</div>
+        <div class="detail-kpi-sub">Busiest hour (7-day ref)</div>
       </div>
     </div>
 
