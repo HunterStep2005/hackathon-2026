@@ -15,6 +15,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     /* ============================================
@@ -469,6 +470,142 @@
       }
     }
 
+    .chart-container canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ============================================
+       DROPDOWN & MODAL STYLES 
+       ============================================ */
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: var(--color-surface);
+      min-width: 160px;
+      box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+      z-index: 100;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .dropdown-content button {
+      color: var(--color-text);
+      padding: 12px 16px;
+      text-decoration: none;
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: var(--text-sm);
+    }
+
+    .dropdown-content button:hover {
+      background-color: var(--color-surface-offset);
+    }
+
+    .dropdown:hover .dropdown-content {
+      display: block;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--color-surface);
+      padding: var(--space-5);
+      border-radius: var(--radius-lg);
+      width: 90%;
+      max-width: 500px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 44px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-4);
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: var(--space-3);
+    }
+
+    .modal-title {
+      font-size: var(--text-lg);
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-text-light);
+    }
+
+    .modal-body {
+      overflow-y: auto;
+      flex: 1;
+      margin-bottom: var(--space-4);
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .fac-checkbox-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .fac-checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+    }
+
+    .fac-checkbox-item:hover {
+      background: var(--color-surface-offset);
+    }
+
+    /* ============================================
+       MOBILE ADJUSTMENTS
+       ============================================ */
     /* ============================================
    LOADING STATE
    ============================================ */
@@ -1920,12 +2057,30 @@
               <button class="btn btn-secondary" onclick="copyShareLink()">
                 <i data-lucide="link" style="width:16px;height:16px;"></i> Copy Share Link
               </button>
-              <button class="btn btn-secondary" onclick="exportPDF()">
-                <i data-lucide="file-text" style="width:16px;height:16px;"></i> Export PDF
-              </button>
-              <button class="btn btn-secondary" onclick="exportCSV()">
-                <i data-lucide="table" style="width:16px;height:16px;"></i> Export CSV
-              </button>
+              <div class="dropdown">
+                <button class="btn btn-secondary" style="display:flex;align-items:center;gap:4px;">
+                  <i data-lucide="file-text" style="width:16px;height:16px;"></i> Export PDF <i
+                    data-lucide="chevron-down" style="width:14px;height:14px;"></i>
+                </button>
+                <div class="dropdown-content">
+                  <button onclick="openExportModal('pdf', '24h')">Last 24 Hours</button>
+                  <button onclick="openExportModal('pdf', '3d')">Last 3 Days</button>
+                  <button onclick="openExportModal('pdf', '7d')">Last 7 Days</button>
+                  <button onclick="openExportModal('pdf', 'all')">Full Time</button>
+                </div>
+              </div>
+              <div class="dropdown">
+                <button class="btn btn-secondary" style="display:flex;align-items:center;gap:4px;">
+                  <i data-lucide="table" style="width:16px;height:16px;"></i> Export CSV <i data-lucide="chevron-down"
+                    style="width:14px;height:14px;"></i>
+                </button>
+                <div class="dropdown-content">
+                  <button onclick="openExportModal('csv', '24h')">Last 24 Hours</button>
+                  <button onclick="openExportModal('csv', '3d')">Last 3 Days</button>
+                  <button onclick="openExportModal('csv', '7d')">Last 7 Days</button>
+                  <button onclick="openExportModal('csv', 'all')">Full Time</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2018,6 +2173,34 @@
         <span>Settings</span>
       </button>
     </nav>
+  </div>
+
+  <!-- Export Modal -->
+  <div class="modal-overlay" id="exportModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Select Locations for <span id="exportTypeLabel"></span> <span id="exportTimeframeLabel"
+            style="font-size:0.8em;color:var(--color-text-light);font-weight:normal;margin-left:8px;"></span></div>
+        <button class="modal-close" onclick="closeExportModal()"><i data-lucide="x"
+            style="width:20px;height:20px;"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:var(--space-3);display:flex;justify-content:space-between;align-items:center;">
+          <label
+            style="display:flex;align-items:center;gap:var(--space-2);background:var(--color-surface-offset);padding:var(--space-2);border-radius:var(--radius-md);flex:1;cursor:pointer;">
+            <input type="checkbox" id="selectAllExportFacs" onchange="toggleAllExportFacs(this)">
+            <strong>Select All</strong>
+          </label>
+        </div>
+        <div class="fac-checkbox-list" id="exportFacList">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeExportModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="generateConfiguredExport()">Export</button>
+      </div>
+    </div>
   </div>
 
   <!-- Toast -->
@@ -2163,7 +2346,34 @@
       }
       return discharges;
     }
-    function getPeakActivityHours7d(facilityId) {
+
+    function getDischargesInTimeframe(facilityId, timeframe) {
+      if (!DATA || !DATA.chartData || !DATA.chartData[facilityId] || !DATA.chartData[facilityId]['Discharges']) return 0;
+      const series = DATA.chartData[facilityId]['Discharges'];
+      if (series.length < 2) return 0;
+
+      const latestTime = new Date(series[series.length - 1].t).getTime();
+      let cutoffTime = 0;
+      if (timeframe === '24h') cutoffTime = latestTime - (24 * 60 * 60 * 1000);
+      else if (timeframe === '3d') cutoffTime = latestTime - (3 * 24 * 60 * 60 * 1000);
+      else if (timeframe === '7d') cutoffTime = latestTime - (7 * 24 * 60 * 60 * 1000);
+      // 'all' leaves cutoffTime at 0
+
+      let discharges = 0;
+      for (let i = 1; i < series.length; i++) {
+        const t = new Date(series[i].t).getTime();
+        if (t > cutoffTime) {
+          const diff = series[i].v - series[i - 1].v;
+          if (diff >= 0) {
+            discharges += diff;
+          } else {
+            discharges += series[i].v; // Handle resets
+          }
+        }
+      }
+      return discharges;
+    }
+    function getPeakActivityHours(facilityId, timeframe) {
       if (!DATA || !DATA.chartData || !DATA.chartData[facilityId]) return 'N/A';
       const cData = DATA.chartData[facilityId];
 
@@ -2182,7 +2392,11 @@
       });
       if (latestTime === 0) return 'N/A';
 
-      const cutoffTime = latestTime - (7 * 24 * 60 * 60 * 1000);
+      let cutoffTime = 0;
+      if (timeframe === '24h') cutoffTime = latestTime - (24 * 60 * 60 * 1000);
+      else if (timeframe === '3d') cutoffTime = latestTime - (3 * 24 * 60 * 60 * 1000);
+      else if (timeframe === '7d') cutoffTime = latestTime - (7 * 24 * 60 * 60 * 1000);
+      // 'all' leaves cutoffTime at 0
 
       const sumAdm = new Array(24).fill(0);
       const sumDis = new Array(24).fill(0);
@@ -2268,6 +2482,10 @@
 
       const peakEnd = (peakStart + 2) % 24;
       return `${formatHour(peakStart)} - ${formatHour(peakEnd)}`;
+    }
+
+    function getPeakActivityHours7d(facilityId) {
+      return getPeakActivityHours(facilityId, '7d');
     }
     function computeOccPct(fac) {
       if (fac.occupancyPct !== undefined) return fac.occupancyPct;
@@ -3352,41 +3570,188 @@
       }
     }
 
-    function exportPDF() {
-      showToast('Generating PDF...');
-      const target = document.getElementById('tab-' + appState.currentTab);
-      html2canvas(target, { scale: 2, backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--color-bg') }).then(canvas => {
+    let currentExportTimeframe = 'all';
+    let currentExportType = 'pdf';
+
+    function openExportModal(type, timeframe) {
+      currentExportType = type;
+      currentExportTimeframe = timeframe;
+      const tfLabels = {
+        '24h': '(Last 24 Hours)',
+        '3d': '(Last 3 Days)',
+        '7d': '(Last 7 Days)',
+        'all': '(Full Time)'
+      };
+
+      const typeLabel = type === 'pdf' ? 'PDF' : 'CSV';
+      document.getElementById('exportTypeLabel').textContent = typeLabel;
+      document.getElementById('exportTimeframeLabel').textContent = tfLabels[timeframe];
+
+      const visibleIds = getVisibleFacilities();
+      const list = document.getElementById('exportFacList');
+      list.innerHTML = visibleIds.map(id => {
+        const f = DATA.facilities[id];
+        return `
+          <label class="fac-checkbox-item">
+            <input type="checkbox" class="export-fac-checkbox" value="${id}" checked>
+            ${f.location} (ID: ${id})
+          </label>
+        `;
+      }).join('');
+
+      document.getElementById('selectAllExportFacs').checked = true;
+      document.getElementById('exportModal').classList.add('active');
+    }
+
+    function closeExportModal() {
+      document.getElementById('exportModal').classList.remove('active');
+    }
+
+    function toggleAllExportFacs(checkbox) {
+      const cbs = document.querySelectorAll('.export-fac-checkbox');
+      cbs.forEach(cb => cb.checked = checkbox.checked);
+    }
+
+    function generateConfiguredExport() {
+      const checkedBoxes = Array.from(document.querySelectorAll('.export-fac-checkbox:checked'));
+      const selectedIds = checkedBoxes.map(cb => cb.value);
+
+      if (selectedIds.length === 0) {
+        showToast('Please select at least one facility');
+        return;
+      }
+
+      closeExportModal();
+      showToast(`Generating ${currentExportType.toUpperCase()}...`);
+
+      const tableData = [];
+      let totalCensus = 0;
+      let totalAdmissions = 0;
+      let totalIcu = 0;
+      let totalDischarges = 0;
+      let totalBirths = 0;
+      let totalBeds = 0;
+      let totalBedTurnoverAmount = 0;
+
+      selectedIds.forEach(id => {
+        const f = DATA.facilities[id];
+
+        // Calculate metrics based on timeframe
+        let admissions = 0, discharges = 0, births = 0;
+
+        if (currentExportTimeframe === 'all' || !DATA.chartData[id]) {
+          admissions = f.latestAdmissions;
+          discharges = f.latestDischarges;
+          births = f.latestBirths;
+        } else {
+          const calcSeries = (metricName) => {
+            const series = DATA.chartData[id][metricName];
+            if (!series || series.length < 2) return 0;
+            const latestTime = new Date(series[series.length - 1].t).getTime();
+            let cutoffTime = 0;
+            if (currentExportTimeframe === '24h') cutoffTime = latestTime - (24 * 60 * 60 * 1000);
+            else if (currentExportTimeframe === '3d') cutoffTime = latestTime - (3 * 24 * 60 * 60 * 1000);
+            else if (currentExportTimeframe === '7d') cutoffTime = latestTime - (7 * 24 * 60 * 60 * 1000);
+            let total = 0;
+            for (let i = 1; i < series.length; i++) {
+              const t = new Date(series[i].t).getTime();
+              if (t > cutoffTime) {
+                const diff = series[i].v - series[i - 1].v;
+                total += (diff >= 0 ? diff : series[i].v);
+              }
+            }
+            return total;
+          };
+          admissions = calcSeries('Admissions');
+          discharges = calcSeries('Discharges');
+          births = calcSeries('Births');
+        }
+
+        const acuity = f.latestCensus > 0 ? ((f.latestICU / f.latestCensus) * 100).toFixed(1) + '%' : '0.0%';
+        const bedTurnoverAmount = getDischargesInTimeframe(id, currentExportTimeframe);
+        const bedTurnover = f.beds > 0 ? ((bedTurnoverAmount / f.beds) * 100).toFixed(1) + '%' : '0.0%';
+        const peakActivity = getPeakActivityHours(id, currentExportTimeframe);
+
+        // Accumulate running totals
+        totalCensus += f.latestCensus || 0;
+        totalAdmissions += admissions || 0;
+        totalIcu += f.latestICU || 0;
+        totalDischarges += discharges || 0;
+        totalBirths += births || 0;
+        totalBeds += f.beds || 0;
+        totalBedTurnoverAmount += bedTurnoverAmount || 0;
+
+        tableData.push([
+          f.location,
+          f.latestCensus,
+          admissions,
+          f.latestICU,
+          discharges,
+          births,
+          acuity,
+          bedTurnover,
+          peakActivity
+        ]);
+      });
+
+      const totalAcuity = totalCensus > 0 ? ((totalIcu / totalCensus) * 100).toFixed(1) + '%' : '0.0%';
+      const totalTurnoverPct = totalBeds > 0 ? ((totalBedTurnoverAmount / totalBeds) * 100).toFixed(1) + '%' : '0.0%';
+
+      if (currentExportType === 'pdf') {
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const imgWidth = 210;
-        const imgHeight = canvas.height * imgWidth / canvas.width;
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight);
-        const blob = pdf.output('blob');
+        const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape orientation for wide table
+
+        pdf.setFontSize(16);
+        pdf.text('HCA Census Command Center Data Snapshot', 14, 15);
+
+        const lu = DATA.lastUpdated;
+        const dateStr = new Intl.DateTimeFormat('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric',
+          hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+        }).format(new Date(lu));
+
+        pdf.setFontSize(10);
+        pdf.setTextColor(100);
+
+        const tfLabels = {
+          '24h': 'Last 24 Hours',
+          '3d': 'Last 3 Days',
+          '7d': 'Last 7 Days',
+          'all': 'Full Time'
+        };
+        pdf.text(`Generated: ${dateStr}  |  Timeframe: ${tfLabels[currentExportTimeframe]}`, 14, 22);
+
+        pdf.autoTable({
+          startY: 30,
+          head: [['Location', 'Current Census', 'Admissions', 'Current ICU', 'Discharges', 'Births', 'Patient Acuity', 'Bed Turnover', 'Peak Activity']],
+          body: tableData,
+          foot: [['Grand Total', totalCensus, totalAdmissions, totalIcu, totalDischarges, totalBirths, totalAcuity, totalTurnoverPct, 'N/A']],
+          theme: 'striped',
+          headStyles: { fillColor: [0, 60, 113] }, // HCA Navy
+          footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+          styles: { fontSize: 9 },
+        });
+
+        pdf.save('hca-census-data.pdf');
+        showToast('PDF downloaded');
+      } else if (currentExportType === 'csv') {
+        let csv = 'Location,Current Census,Admissions,Current ICU,Discharges,Births,Patient Acuity,Bed Turnover,Peak Activity\n';
+        tableData.forEach(row => {
+          csv += `"${row[0]}",${row[1]},${row[2]},${row[3]},${row[4]},${row[5]},"${row[6]}","${row[7]}","${row[8]}"\n`;
+        });
+        csv += `"Grand Total",${totalCensus},${totalAdmissions},${totalIcu},${totalDischarges},${totalBirths},"${totalAcuity}","${totalTurnoverPct}","N/A"\n`;
+
+        const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'hca-census-snapshot.pdf';
+        a.download = 'hca-census-data.csv';
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showToast('PDF downloaded');
-      }).catch(() => showToast('PDF export failed'));
-    }
-
-    function exportCSV() {
-      const visibleIds = getVisibleFacilities();
-      let csv = 'Facility ID,Location,Beds,Census,Occupancy %,ICU,ICU Max,ICU %,Admissions,Discharges,Births,Census 24h Delta,ICU 24h Delta\n';
-      visibleIds.forEach(id => {
-        const f = DATA.facilities[id];
-        csv += `${f.id},"${f.location}",${f.beds},${f.latestCensus},${computeOccPct(f).toFixed(1)},${f.latestICU},${f.icuMax},${computeIcuPct(f).toFixed(1)},${f.latestAdmissions},${f.latestDischarges},${f.latestBirths},${f.censusDelta24h || 0},${f.icuDelta24h || 0}\n`;
-      });
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'hca-census-data.csv';
-      a.click();
-      URL.revokeObjectURL(url);
-      showToast('CSV downloaded');
+        showToast('CSV downloaded');
+      }
     }
 
     function renderModelPerfTable() {
