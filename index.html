@@ -3028,17 +3028,24 @@
       if (forecastRaw.length > 0) {
         // Connect forecast to last historical point
         const lastHist = historical[historical.length - 1];
+        const lastHistTime = new Date(lastHist.t).getTime();
+        // For 24h view, limit forecast to 24 hours from end of historical
+        var filteredForecast = forecastRaw;
+        if (range === '24h') {
+          var forecastCutoff = lastHistTime + 24 * 3600000;
+          filteredForecast = forecastRaw.filter(function(p) { return new Date(p.timestamp).getTime() <= forecastCutoff; });
+        }
         const forecastData = [
           { x: new Date(lastHist.t), y: lastHist.v },
-          ...forecastRaw.map(p => ({ x: new Date(p.timestamp), y: p.value }))
+          ...filteredForecast.map(p => ({ x: new Date(p.timestamp), y: p.value }))
         ];
         const upperData = [
           { x: new Date(lastHist.t), y: lastHist.v },
-          ...forecastRaw.map(p => ({ x: new Date(p.timestamp), y: p.upper }))
+          ...filteredForecast.map(p => ({ x: new Date(p.timestamp), y: p.upper }))
         ];
         const lowerData = [
           { x: new Date(lastHist.t), y: lastHist.v },
-          ...forecastRaw.map(p => ({ x: new Date(p.timestamp), y: p.lower }))
+          ...filteredForecast.map(p => ({ x: new Date(p.timestamp), y: p.lower }))
         ];
 
         datasets.push({
@@ -3102,9 +3109,13 @@
       var dataMinTime = new Date(historical[0].t).getTime();
       var dataMaxTime = new Date(historical[historical.length - 1].t).getTime();
       if (forecastRaw.length > 0) {
-        var lastForecast = forecastRaw[forecastRaw.length - 1];
-        var fTime = new Date(lastForecast.timestamp).getTime();
-        if (fTime > dataMaxTime) dataMaxTime = fTime;
+        if (range === '24h') {
+          dataMaxTime = dataMaxTime + 24 * 3600000;
+        } else {
+          var lastForecast = forecastRaw[forecastRaw.length - 1];
+          var fTime = new Date(lastForecast.timestamp).getTime();
+          if (fTime > dataMaxTime) dataMaxTime = fTime;
+        }
       }
 
       const annotations = {};
@@ -3124,6 +3135,85 @@
             color: isDark ? 'rgba(248,81,73,0.8)' : 'rgba(235,87,87,0.8)',
             backgroundColor: 'transparent'
           }
+        };
+      }
+
+      // Configure x-axis ticks based on range
+      var xTimeConfig, xTickConfig;
+      if (range === '3d') {
+        xTimeConfig = {
+          tooltipFormat: 'MMM d, h:mm a',
+          unit: 'day',
+          displayFormats: {
+            day: 'MMM d',
+            hour: 'h a',
+            month: 'MMM'
+          }
+        };
+        xTickConfig = {
+          color: textColor,
+          font: { family: 'Inter', size: 11, weight: '600' },
+          maxTicksLimit: 6,
+          autoSkip: true,
+          major: { enabled: true },
+          callback: function(value, index, ticks) {
+            var d = new Date(value);
+            var h = d.getHours();
+            if (h === 0) return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(d);
+            if (h === 8 || h === 16) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            return null;
+          }
+        };
+      } else if (range === '7d') {
+        xTimeConfig = {
+          tooltipFormat: 'MMM d, h:mm a',
+          unit: 'day',
+          displayFormats: {
+            day: 'MMM d',
+            hour: '',
+            month: 'MMM'
+          }
+        };
+        xTickConfig = {
+          color: textColor,
+          font: { family: 'Inter', size: 11, weight: '600' },
+          autoSkip: false,
+          major: { enabled: true },
+          callback: function(value) {
+            var d = new Date(value);
+            var day = d.getDate();
+            var month = d.toLocaleString('en-US', { month: 'short' });
+            return month + ' ' + day;
+          }
+        };
+      } else if (range === 'all') {
+        xTimeConfig = {
+          tooltipFormat: 'MMM d, h:mm a',
+          displayFormats: {
+            hour: 'h a',
+            day: 'MMM d',
+            week: 'MMM d',
+            month: 'MMM'
+          }
+        };
+        xTickConfig = {
+          color: textColor,
+          font: { family: 'Inter', size: 11 },
+          maxTicksLimit: 10
+        };
+      } else {
+        xTimeConfig = {
+          tooltipFormat: 'MMM d, h:mm a',
+          displayFormats: {
+            hour: 'h a',
+            day: 'MMM d',
+            month: 'MMM'
+          }
+        };
+        xTickConfig = {
+          color: textColor,
+          font: { family: 'Inter', size: 11 },
+          maxTicksLimit: 8
         };
       }
 
@@ -3199,15 +3289,9 @@
           scales: {
             x: {
               type: 'time',
-              time: {
-                tooltipFormat: 'MMM d, h:mm a',
-                displayFormats: {
-                  hour: 'h a',
-                  day: 'MMM d'
-                }
-              },
+              time: xTimeConfig,
               grid: { color: gridColor },
-              ticks: { color: textColor, font: { family: 'Inter', size: 11 }, maxTicksLimit: 8 }
+              ticks: xTickConfig
             },
             y: {
               beginAtZero: false,
